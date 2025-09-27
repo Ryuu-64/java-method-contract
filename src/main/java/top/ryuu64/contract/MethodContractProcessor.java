@@ -45,12 +45,13 @@ public class MethodContractProcessor extends AbstractProcessor {
                 continue;
             }
 
-            // 3. 查找所有被这个"契约注解"（如 @CreateContract）标记的类
             Set<? extends Element> elementsAnnotatedWithContract = roundEnv.getElementsAnnotatedWith(annotationType);
             for (Element element : elementsAnnotatedWithContract) {
-                if (isValidClass(element)) {
-                    processStaticMethodContract(element, contract);
+                if (!isValidClass(element)) {
+                    continue;
                 }
+
+                processContract(element, contract);
             }
         }
         // 表示这些注解已由此处理器处理，不会传递给其他处理器
@@ -70,7 +71,7 @@ public class MethodContractProcessor extends AbstractProcessor {
         return false;
     }
 
-    private void processStaticMethodContract(Element element, MethodContract contract) {
+    private void processContract(Element element, MethodContract contract) {
         TypeElement classElement = (TypeElement) element;
         List<Modifier> requiredModifiers = Arrays.stream(contract.modifiers()).collect(Collectors.toList());
         String requiredMethodName = contract.methodName();
@@ -91,10 +92,17 @@ public class MethodContractProcessor extends AbstractProcessor {
         }
 
         // 使用 TypeMirror 进行后续检查
-        if (hasStaticMethod(classElement, requiredModifiers, requiredMethodName, requiredParameterType, requiredReturnType)) {
+        if (containsMatchingMethod(classElement, requiredModifiers, requiredMethodName, requiredParameterType, requiredReturnType)) {
             return;
         }
 
+        printErrorMessage(requiredParameterType, classElement, requiredReturnType, requiredMethodName);
+    }
+
+    private void printErrorMessage(
+            List<? extends TypeMirror> requiredParameterType, TypeElement classElement,
+            TypeMirror requiredReturnType, String requiredMethodName
+    ) {
         // 生成错误信息（使用 TypeMirror 的字符串表示）
         String paramTypesStr = requiredParameterType.stream()
                 .map(TypeMirror::toString) // 或使用更友好的方式格式化
@@ -106,58 +114,71 @@ public class MethodContractProcessor extends AbstractProcessor {
                 requiredMethodName,
                 paramTypesStr
         );
-        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, errorMessage, element);
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, errorMessage, classElement);
     }
 
-    private boolean hasStaticMethod(
+    private boolean containsMatchingMethod(
             TypeElement classElement,
             List<Modifier> requiredModifiers,
             String requiredMethodName,
             List<? extends TypeMirror> requiredParamTypes,
             TypeMirror requiredReturnType
     ) {
-        Types types = processingEnv.getTypeUtils();
+        Types typeUtils = processingEnv.getTypeUtils();
         for (Element enclosedElement : classElement.getEnclosedElements()) {
-            if (enclosedElement.getKind() == ElementKind.METHOD) {
-                ExecutableElement methodElement = (ExecutableElement) enclosedElement;
-                Set<Modifier> modifiers = methodElement.getModifiers();
-                // 检查方法名和静态修饰符
-                if (
-                        modifiers.containsAll(requiredModifiers) && methodElement.getSimpleName().toString().equals(requiredMethodName)
-                ) {
-                    // 使用 Types 工具进行严格的返回类型比较
-                    if (!types.isSameType(methodElement.getReturnType(), requiredReturnType)) {
-                        continue;
-                    }
+            if (enclosedElement.getKind() != ElementKind.METHOD) {
+                continue;
+            }
 
-                    // 检查参数列表
-                    if (isParameterListMatch(methodElement, requiredParamTypes, types)) {
-                        return true;
-                    }
-                }
+            ExecutableElement element = (ExecutableElement) enclosedElement;
+            if (!hasModifiers(element, requiredModifiers)) {
+                continue;
+            }
+
+            if (!hasReturnType(element, requiredReturnType, typeUtils)) {
+                continue;
+            }
+
+            if (!hasSimpleName(element, requiredMethodName)) {
+                continue;
+            }
+
+            if (hasParameterTypes(element, requiredParamTypes, typeUtils)) {
+                return true;
             }
         }
         return false;
     }
 
-    /**
-     * 使用 Types 工具类进行参数列表匹配
-     */
-    private boolean isParameterListMatch(
-            ExecutableElement methodElement,
-            List<? extends TypeMirror> requiredParamTypes,
-            Types types
+    private static boolean hasModifiers(ExecutableElement element, List<Modifier> requiredModifiers) {
+        return element.getModifiers().containsAll(requiredModifiers);
+    }
+
+    private static boolean hasReturnType(ExecutableElement element, TypeMirror requiredReturnType, Types typeUtils) {
+        return typeUtils.isSameType(element.getReturnType(), requiredReturnType);
+    }
+
+    private static boolean hasSimpleName(ExecutableElement element, String name) {
+        return element.getSimpleName().toString().equals(name);
+    }
+
+    private static boolean hasParameterTypes(
+            ExecutableElement element,
+            List<? extends TypeMirror> requiredTypes,
+            Types typeUtils
     ) {
-        List<? extends VariableElement> methodParameters = methodElement.getParameters();
-        if (methodParameters.size() != requiredParamTypes.size()) {
+        List<TypeMirror> types = element.getParameters().stream()
+                .map(VariableElement::asType)
+                .toList();
+        if (types.size() != requiredTypes.size()) {
             return false;
         }
 
-        for (int i = 0; i < requiredParamTypes.size(); i++) {
-            TypeMirror methodParamType = methodParameters.get(i).asType();
-            TypeMirror requiredParamType = requiredParamTypes.get(i);
+        for (int i = 0; i < requiredTypes.size(); i++) {
+            TypeMirror methodParamType = types.get(i);
+            TypeMirror requiredParamType = requiredTypes.get(i);
 
-            if (!types.isSameType(methodParamType, requiredParamType)) {
+            if (!typeUtils.isSameType(methodParamType, requiredParamType)) {
                 return false;
             }
         }
