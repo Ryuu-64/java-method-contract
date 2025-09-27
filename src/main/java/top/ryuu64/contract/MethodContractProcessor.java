@@ -96,23 +96,29 @@ public class MethodContractProcessor extends AbstractProcessor {
             return;
         }
 
-        printErrorMessage(requiredParameterType, classElement, requiredReturnType, requiredMethodName);
+        printErrorMessage(classElement, contract.modifiers(), requiredReturnType, requiredMethodName, requiredParameterType);
     }
 
     private void printErrorMessage(
-            List<? extends TypeMirror> requiredParameterType, TypeElement classElement,
-            TypeMirror requiredReturnType, String requiredMethodName
+            TypeElement classElement,
+            Modifier[] modifiers,
+            TypeMirror requiredReturnType,
+            String requiredMethodName,
+            List<? extends TypeMirror> requiredParameterType
     ) {
-        // 生成错误信息（使用 TypeMirror 的字符串表示）
-        String paramTypesStr = requiredParameterType.stream()
-                .map(TypeMirror::toString) // 或使用更友好的方式格式化
+        String modifiersString = Arrays.stream(modifiers)
+                .map(Modifier::toString)
+                .collect(Collectors.joining(" "));
+        String paramTypesString = requiredParameterType.stream()
+                .map(TypeMirror::toString)
                 .collect(Collectors.joining(", "));
         String errorMessage = String.format(
-                "Class '%s' must implement a method: `%s %s(%s)`.",
+                "Class '%s' must implement a method: `%s %s %s(%s)`.",
                 classElement.getSimpleName(),
-                requiredReturnType.toString(), // 使用 TypeMirror 的字符串表示
+                modifiersString,
+                requiredReturnType.toString(),
                 requiredMethodName,
-                paramTypesStr
+                paramTypesString
         );
         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, errorMessage, classElement);
     }

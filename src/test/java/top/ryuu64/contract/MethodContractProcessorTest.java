@@ -10,8 +10,6 @@ import javax.tools.JavaFileObject;
 
 class MethodContractProcessorTest {
     private final Compiler compiler = Compiler.javac().withProcessors(new MethodContractProcessor());
-
-    // 1. 定义注解的源码作为测试资源
     private final JavaFileObject methodContractSource = JavaFileObjects.forSourceString(
             "top.ryuu64.contract.MethodContract",
             """
@@ -45,7 +43,7 @@ class MethodContractProcessorTest {
                     import java.lang.annotation.RetentionPolicy;
                     import java.lang.annotation.Target;
                     
-                    @MethodContract(methodName = "create", modifiers = {Modifier.STATIC})
+                    @MethodContract(methodName = "create", modifiers = {Modifier.PRIVATE, Modifier.STATIC})
                     @Retention(RetentionPolicy.CLASS)
                     @Target(ElementType.TYPE)
                     public @interface CreateContract {
@@ -54,35 +52,33 @@ class MethodContractProcessorTest {
     );
 
     @Test
-    public void test_WhenClassHasRequiredStaticMethod_ThenCompilationSucceeds() {
-        // 2. 准备正确实现了静态方法的测试源码
+    public void whenClassHasRequiredStaticMethod_ThenCompilationSucceeds() {
         JavaFileObject validSource = JavaFileObjects.forSourceString(
                 "TestClass",
                 """
                         package test;
                         import top.ryuu64.contract.CreateContract;
+                        
                         @CreateContract
                         public class TestClass {
-                            public static void create() {
+                            private static void create() {
                             }
                         }
                         """
         );
 
-        // 3. 编译时传入所有必要的源文件：注解定义 + 测试类
         Compilation compilation = compiler.compile(methodContractSource, createContractSource, validSource);
-
-        // 断言编译成功
         CompilationSubject.assertThat(compilation).succeeded();
     }
 
     @Test
-    public void test_WhenClassMissingRequiredStaticMethod_ThenCompilationFails() {
+    public void whenClassMissingRequiredStaticMethod_ThenCompilationFails() {
         JavaFileObject invalidSource = JavaFileObjects.forSourceString(
                 "InvalidClass",
                 """
                         package test;
                         import top.ryuu64.contract.CreateContract;
+                        
                         @CreateContract
                         public class InvalidClass {
                             // 缺少 create() 方法
@@ -92,15 +88,17 @@ class MethodContractProcessorTest {
 
         Compilation compilation = compiler.compile(methodContractSource, createContractSource, invalidSource);
         CompilationSubject.assertThat(compilation).failed();
+        CompilationSubject.assertThat(compilation).hadErrorContaining("Class 'InvalidClass' must implement a method: `private static void create()`.");
     }
 
     @Test
-    public void test_WhenClassHasWrongSignatureMethod_ThenCompilationFails() {
+    public void whenClassHasWrongSignatureMethod_ThenCompilationFails() {
         JavaFileObject wrongSignatureSource = JavaFileObjects.forSourceString(
                 "WrongClass",
                 """
                         package test;
                         import top.ryuu64.contract.CreateContract;
+                        
                         @CreateContract
                         public class WrongClass {
                             public static WrongClass create(String param) {
@@ -112,5 +110,6 @@ class MethodContractProcessorTest {
 
         Compilation compilation = compiler.compile(methodContractSource, createContractSource, wrongSignatureSource);
         CompilationSubject.assertThat(compilation).failed();
+        CompilationSubject.assertThat(compilation).hadErrorContaining("Class 'WrongClass' must implement a method: `private static void create()`.");
     }
 }
