@@ -38,9 +38,7 @@ public class MethodContractProcessor extends AbstractProcessor {
             }
 
             TypeElement annotationType = (TypeElement) annotationElement;
-            // 2. 获取该注解类型上的 @MethodContract 元注解信息
             MethodContract contract = annotationType.getAnnotation(MethodContract.class);
-            // 理论上不会发生，因为是通过getElementsAnnotatedWith找到的
             if (contract == null) {
                 continue;
             }
@@ -54,7 +52,6 @@ public class MethodContractProcessor extends AbstractProcessor {
                 processContract(element, contract);
             }
         }
-        // 表示这些注解已由此处理器处理，不会传递给其他处理器
         return true;
     }
 
@@ -77,7 +74,7 @@ public class MethodContractProcessor extends AbstractProcessor {
         String requiredMethodName = contract.methodName();
         List<? extends TypeMirror> requiredParameterType;
         try {
-            contract.parameterTypes(); // 这行会触发异常
+            contract.parameterTypes();
             requiredParameterType = Collections.emptyList();
         } catch (MirroredTypesException exception) {
             requiredParameterType = exception.getTypeMirrors();
@@ -91,7 +88,6 @@ public class MethodContractProcessor extends AbstractProcessor {
             requiredReturnType = exception.getTypeMirror();
         }
 
-        // 使用 TypeMirror 进行后续检查
         if (containsMatchingMethod(classElement, requiredModifiers, requiredMethodName, requiredParameterType, requiredReturnType)) {
             return;
         }

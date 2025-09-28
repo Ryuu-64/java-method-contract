@@ -10,7 +10,7 @@ import javax.tools.JavaFileObject;
 
 class MethodContractProcessorTest {
     private final Compiler compiler = Compiler.javac().withProcessors(new MethodContractProcessor());
-    private final JavaFileObject methodContractSource = JavaFileObjects.forSourceString(
+    private final JavaFileObject methodContract = JavaFileObjects.forSourceString(
             "top.ryuu64.contract.MethodContract",
             """
                     package top.ryuu64.contract;
@@ -32,7 +32,7 @@ class MethodContractProcessorTest {
                     """
     );
 
-    private final JavaFileObject createContractSource = JavaFileObjects.forSourceString(
+    private final JavaFileObject createContract = JavaFileObjects.forSourceString(
             "top.ryuu64.contract.CreateContract",
             """
                     package top.ryuu64.contract;
@@ -67,7 +67,7 @@ class MethodContractProcessorTest {
                         """
         );
 
-        Compilation compilation = compiler.compile(methodContractSource, createContractSource, validSource);
+        Compilation compilation = compiler.compile(methodContract, createContract, validSource);
         CompilationSubject.assertThat(compilation).succeeded();
     }
 
@@ -81,19 +81,18 @@ class MethodContractProcessorTest {
                         
                         @CreateContract
                         public class InvalidClass {
-                            // 缺少 create() 方法
                         }
                         """
         );
 
-        Compilation compilation = compiler.compile(methodContractSource, createContractSource, invalidSource);
+        Compilation compilation = compiler.compile(methodContract, createContract, invalidSource);
         CompilationSubject.assertThat(compilation).failed();
         CompilationSubject.assertThat(compilation).hadErrorContaining("Class 'InvalidClass' must implement a method: `private static void create()`.");
     }
 
     @Test
     public void whenClassHasWrongSignatureMethod_ThenCompilationFails() {
-        JavaFileObject wrongSignatureSource = JavaFileObjects.forSourceString(
+        JavaFileObject wrongClass = JavaFileObjects.forSourceString(
                 "WrongClass",
                 """
                         package test;
@@ -108,7 +107,7 @@ class MethodContractProcessorTest {
                         """
         );
 
-        Compilation compilation = compiler.compile(methodContractSource, createContractSource, wrongSignatureSource);
+        Compilation compilation = compiler.compile(methodContract, createContract, wrongClass);
         CompilationSubject.assertThat(compilation).failed();
         CompilationSubject.assertThat(compilation).hadErrorContaining("Class 'WrongClass' must implement a method: `private static void create()`.");
     }
