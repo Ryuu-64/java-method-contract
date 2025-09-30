@@ -10,64 +10,58 @@ import javax.tools.JavaFileObject;
 
 class MethodContractProcessorTest {
     private final Compiler compiler = Compiler.javac().withProcessors(new MethodContractProcessor());
-    private final JavaFileObject methodContract = JavaFileObjects.forSourceString(
+    private static final JavaFileObject METHOD_CONTRACT = JavaFileObjects.forSourceString(
             "top.ryuu64.contract.MethodContract",
-            """
-                    package top.ryuu64.contract;
-                    
-                    import javax.lang.model.element.Modifier;
-                    import java.lang.annotation.ElementType;
-                    import java.lang.annotation.Retention;
-                    import java.lang.annotation.RetentionPolicy;
-                    import java.lang.annotation.Target;
-                    
-                    @Target(ElementType.ANNOTATION_TYPE)
-                    @Retention(RetentionPolicy.RUNTIME)
-                    public @interface MethodContract {
-                        String methodName();
-                        Modifier[] modifiers() default {};
-                        Class<?>[] parameterTypes() default {};
-                        Class<?> returnType() default void.class;
-                    }
-                    """
+            "package top.ryuu64.contract;\n" +
+                    "\n" +
+                    "import javax.lang.model.element.Modifier;\n" +
+                    "import java.lang.annotation.ElementType;\n" +
+                    "import java.lang.annotation.Retention;\n" +
+                    "import java.lang.annotation.RetentionPolicy;\n" +
+                    "import java.lang.annotation.Target;\n" +
+                    "\n" +
+                    "@Target(ElementType.ANNOTATION_TYPE)\n" +
+                    "@Retention(RetentionPolicy.RUNTIME)\n" +
+                    "public @interface MethodContract {\n" +
+                    "    String methodName();\n" +
+                    "    Modifier[] modifiers() default {};\n" +
+                    "    Class<?>[] parameterTypes() default {};\n" +
+                    "    Class<?> returnType() default void.class;\n" +
+                    "}"
     );
 
-    private final JavaFileObject createContract = JavaFileObjects.forSourceString(
+    private static final JavaFileObject CREATE_CONTRACT = JavaFileObjects.forSourceString(
             "top.ryuu64.contract.CreateContract",
-            """
-                    package top.ryuu64.contract;
-                    
-                    import javax.lang.model.element.Modifier;
-                    import java.lang.annotation.ElementType;
-                    import java.lang.annotation.Retention;
-                    import java.lang.annotation.RetentionPolicy;
-                    import java.lang.annotation.Target;
-                    
-                    @MethodContract(methodName = "create", modifiers = {Modifier.PRIVATE, Modifier.STATIC})
-                    @Retention(RetentionPolicy.CLASS)
-                    @Target(ElementType.TYPE)
-                    public @interface CreateContract {
-                    }
-                    """
+            "package top.ryuu64.contract;\n" +
+                    "\n" +
+                    "                    import javax.lang.model.element.Modifier;\n" +
+                    "                    import java.lang.annotation.ElementType;\n" +
+                    "                    import java.lang.annotation.Retention;\n" +
+                    "                    import java.lang.annotation.RetentionPolicy;\n" +
+                    "                    import java.lang.annotation.Target;\n" +
+                    "\n" +
+                    "                    @MethodContract(methodName = \"create\", modifiers = {Modifier.PRIVATE, Modifier.STATIC})\n" +
+                    "                    @Retention(RetentionPolicy.CLASS)\n" +
+                    "                    @Target(ElementType.TYPE)\n" +
+                    "                    public @interface CreateContract {\n" +
+                    "                    }"
     );
 
     @Test
     public void whenClassHasRequiredStaticMethod_ThenCompilationSucceeds() {
         JavaFileObject validSource = JavaFileObjects.forSourceString(
                 "TestClass",
-                """
-                        package test;
-                        import top.ryuu64.contract.CreateContract;
-                        
-                        @CreateContract
-                        public class TestClass {
-                            private static void create() {
-                            }
-                        }
-                        """
+                "package test;\n" +
+                        "                        import top.ryuu64.contract.CreateContract;\n" +
+                        "\n" +
+                        "                        @CreateContract\n" +
+                        "                        public class TestClass {\n" +
+                        "                            private static void create() {\n" +
+                        "                            }\n" +
+                        "                        }"
         );
 
-        Compilation compilation = compiler.compile(methodContract, createContract, validSource);
+        Compilation compilation = compiler.compile(METHOD_CONTRACT, CREATE_CONTRACT, validSource);
         CompilationSubject.assertThat(compilation).succeeded();
     }
 
@@ -75,17 +69,15 @@ class MethodContractProcessorTest {
     public void whenClassMissingRequiredStaticMethod_ThenCompilationFails() {
         JavaFileObject invalidSource = JavaFileObjects.forSourceString(
                 "InvalidClass",
-                """
-                        package test;
-                        import top.ryuu64.contract.CreateContract;
-                        
-                        @CreateContract
-                        public class InvalidClass {
-                        }
-                        """
+                "package test;\n" +
+                        "                        import top.ryuu64.contract.CreateContract;\n" +
+                        "\n" +
+                        "                        @CreateContract\n" +
+                        "                        public class InvalidClass {\n" +
+                        "                        }"
         );
 
-        Compilation compilation = compiler.compile(methodContract, createContract, invalidSource);
+        Compilation compilation = compiler.compile(METHOD_CONTRACT, CREATE_CONTRACT, invalidSource);
         CompilationSubject.assertThat(compilation).failed();
         CompilationSubject.assertThat(compilation).hadErrorContaining("Class 'InvalidClass' must implement a method: `private static void create()`.");
     }
@@ -94,20 +86,18 @@ class MethodContractProcessorTest {
     public void whenClassHasWrongSignatureMethod_ThenCompilationFails() {
         JavaFileObject wrongClass = JavaFileObjects.forSourceString(
                 "WrongClass",
-                """
-                        package test;
-                        import top.ryuu64.contract.CreateContract;
-                        
-                        @CreateContract
-                        public class WrongClass {
-                            public static WrongClass create(String param) {
-                                return new WrongClass();
-                            }
-                        }
-                        """
+                "                        package test;\n" +
+                        "                        import top.ryuu64.contract.CreateContract;\n" +
+                        "\n" +
+                        "                        @CreateContract\n" +
+                        "                        public class WrongClass {\n" +
+                        "                            public static WrongClass create(String param) {\n" +
+                        "                                return new WrongClass();\n" +
+                        "                            }\n" +
+                        "                        }"
         );
 
-        Compilation compilation = compiler.compile(methodContract, createContract, wrongClass);
+        Compilation compilation = compiler.compile(METHOD_CONTRACT, CREATE_CONTRACT, wrongClass);
         CompilationSubject.assertThat(compilation).failed();
         CompilationSubject.assertThat(compilation).hadErrorContaining("Class 'WrongClass' must implement a method: `private static void create()`.");
     }

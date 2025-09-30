@@ -3,11 +3,11 @@ plugins {
 }
 
 group = "top.ryuu64"
-version = "0.1.0"
+version = "0.2.0"
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
+        languageVersion.set(JavaLanguageVersion.of(8))
     }
 }
 
@@ -17,9 +17,9 @@ repositories {
 
 dependencies {
     // https://mvnrepository.com/artifact/com.google.auto.service/auto-service-annotations
-    runtimeOnly("com.google.auto.service:auto-service-annotations:1.1.1")
+    compileOnly("com.google.auto.service:auto-service-annotations:1.1.1")
     // https://mvnrepository.com/artifact/com.google.auto.service/auto-service
-    implementation("com.google.auto.service:auto-service:1.1.1")
+    annotationProcessor("com.google.auto.service:auto-service:1.1.1")
 
     // https://mvnrepository.com/artifact/com.google.testing.compile/compile-testing
     testImplementation("com.google.testing.compile:compile-testing:0.23.0")

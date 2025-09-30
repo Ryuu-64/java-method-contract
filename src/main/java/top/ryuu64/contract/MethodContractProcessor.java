@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 @AutoService(Processor.class)
 @SupportedAnnotationTypes("top.ryuu64.contract.MethodContract")
-@SupportedSourceVersion(SourceVersion.RELEASE_25)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class MethodContractProcessor extends AbstractProcessor {
     private Messager messager;
 
@@ -171,7 +171,7 @@ public class MethodContractProcessor extends AbstractProcessor {
     ) {
         List<TypeMirror> types = element.getParameters().stream()
                 .map(VariableElement::asType)
-                .toList();
+                .collect(Collectors.toList());
         if (types.size() != requiredTypes.size()) {
             return false;
         }
