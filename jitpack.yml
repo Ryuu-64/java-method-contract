@@ -1,0 +1,9 @@
+jdk:
+  - openjdk8
+
+gradle:
+  version: 8.14
+
+install:
+  - ./method-contract-annotations/gradlew publishToMavenLocal
+  - ./method-contract-processor/gradlew publishToMavenLocal
